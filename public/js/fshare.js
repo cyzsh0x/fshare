@@ -265,11 +265,11 @@ function updateSessionsUI() {
             <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full ${session.status === 'active' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}"></span>
+                        <span class="w-2 h-2 rounded-full ${session.status === 'in_progress' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}"></span>
                         <span class="text-sm font-medium">Session #${session.sessionNumber}</span>
                     </div>
-                    <span class="text-xs px-2 py-1 rounded ${session.status === 'active' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}">
-                        ${session.status === 'active' ? 'Active' : 'Inactive'}
+                    <span class="text-xs px-2 py-1 rounded ${session.status === 'in_progress' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}">
+                        ${session.status === 'in_progress' ? 'Active' : 'Inactive'}
                     </span>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-xs text-dark-secondary mb-3">

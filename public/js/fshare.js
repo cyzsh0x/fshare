@@ -1,14 +1,11 @@
 // Initialize Lucide icons
 lucide.createIcons();
 
+// Set custom header for API requests
 axios.defaults.headers.common['X-Daemon'] = 'DaemonCyzsh';
-
-// Set current year in footer
-// document.getElementById('year').textContent = new Date().getFullYear();
 
 // Sidebar toggle functionality
 const sidebar = document.getElementById('sidebar');
-//const sidebarToggle = document.getElementById('sidebarToggle');
 const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
 const sidebarOverlay = document.createElement('div');
 sidebarOverlay.id = 'sidebarOverlay';
@@ -19,7 +16,6 @@ function toggleSidebar() {
     sidebarOverlay.classList.toggle('active');
 }
 
-//sidebarToggle.addEventListener('click', toggleSidebar);
 mobileSidebarToggle.addEventListener('click', toggleSidebar);
 sidebarOverlay.addEventListener('click', toggleSidebar);
 
@@ -31,7 +27,6 @@ const sections = {
     'stats': document.getElementById('stats-section'),
     'guide': document.getElementById('guide-section')
 };
-// const pageTitle = document.getElementById('pageTitle');
 
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
@@ -41,9 +36,6 @@ navLinks.forEach(link => {
         // Update active nav link
         navLinks.forEach(navLink => navLink.classList.remove('active'));
         link.classList.add('active');
-        
-        // Update page title
-        // pageTitle.textContent = link.querySelector('span').textContent;
         
         // Show selected section
         Object.values(sections).forEach(sec => sec.classList.add('hidden'));
@@ -86,7 +78,6 @@ inputs.forEach(input => {
     input.addEventListener('input', checkFormValidity);
 });
 
-// Initialize form validation
 checkFormValidity();
 
 // Form submission
@@ -111,14 +102,13 @@ form.addEventListener('submit', async (e) => {
         await Swal.fire({
             icon: 'success',
             title: 'Session Started',
-            text: `Your sharing session has been started successfully`,
+            text: `Your sharing session has been started successfully (ID: ${result.sessionId})`,
             background: '#1e293b',
             color: '#e2e8f0',
             confirmButtonColor: '#3b82f6',
             iconColor: '#10b981'
         });
         
-        // Clear form after successful submission
         form.reset();
         checkFormValidity();
         
@@ -170,7 +160,9 @@ function loadInitialData() {
 }
 
 function initWebSocket() {
-    ws = new WebSocket(`wss://${window.location.host}`);
+    // Use wss:// if the page is loaded via https, otherwise ws://
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    ws = new WebSocket(`${protocol}${window.location.host}`);
     
     ws.onopen = () => {
         console.log('WebSocket connected');
@@ -179,27 +171,29 @@ function initWebSocket() {
     };
     
     ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === 'sessions_update') {
-        checkForCompletedSessions(message.data.activeSessions, previousSessions);
-        checkForFailedSessions(message.data.activeSessions, previousSessions);
-        
-        // Update sessions data
-        activeSessions = message.data.activeSessions;
-        stats = message.data.stats;
-        localStorage.setItem('fshare_sessions', JSON.stringify({
-            activeSessions,
-            stats
-        }));
-        
-        // Update UI
-        updateSessionsUI();
-        updateStatsUI();
-        
-        // Store current sessions for next comparison
-        previousSessions = [...activeSessions];
-    }
-};
+        try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'sessions_update') {
+                checkForCompletedSessions(message.data.activeSessions, previousSessions);
+                checkForFailedSessions(message.data.activeSessions, previousSessions);
+                
+                activeSessions = message.data.activeSessions;
+                stats = message.data.stats;
+                
+                localStorage.setItem('fshare_sessions', JSON.stringify({
+                    activeSessions,
+                    stats
+                }));
+                
+                updateSessionsUI();
+                updateStatsUI();
+                
+                previousSessions = [...activeSessions];
+            }
+        } catch (error) {
+            console.error('Error processing WebSocket message:', error);
+        }
+    };
     
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
@@ -237,14 +231,22 @@ async function fetchInitialData() {
     try {
         const response = await axios.get('/api/v1/initial-data');
         const data = response.data.data;
+        
+        checkForCompletedSessions(data.activeSessions, previousSessions);
+        checkForFailedSessions(data.activeSessions, previousSessions);
+        
         activeSessions = data.activeSessions;
         stats = data.stats;
+        
         localStorage.setItem('fshare_sessions', JSON.stringify({
             activeSessions,
             stats
         }));
+        
         updateSessionsUI();
         updateStatsUI();
+        
+        previousSessions = [...activeSessions];
     } catch (error) {
         console.error('Failed to fetch initial data:', error);
     }
@@ -253,7 +255,7 @@ async function fetchInitialData() {
 function updateSessionsUI() {
     const sessionsContainer = document.getElementById('sessions');
     
-    if (activeSessions.length === 0) {
+    if (!activeSessions || activeSessions.length === 0) {
         sessionsContainer.innerHTML = `
             <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30 text-center text-dark-secondary">
                 <i data-lucide="server-off" class="w-6 h-6 mx-auto mb-2 text-dark-secondary"></i>
@@ -297,29 +299,14 @@ function updateSessionsUI() {
 }
 
 function updateStatsUI() {
-    document.getElementById('totalShares').textContent = stats.totalShares;
-    document.getElementById('successRate').textContent = `${stats.successRate}%`;
+    document.getElementById('totalShares').textContent = stats.totalShares || 0;
+    document.getElementById('successRate').textContent = `${stats.successRate || 0}%`;
 }
-
-// Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
-    loadInitialData();
-    initWebSocket();
-    
-    // Show home section by default
-    document.querySelector('.nav-link[data-section="home"]').click();
-});
-
-// Handle window resize for sidebar
-window.addEventListener('resize', () => {
-    if (window.innerWidth >= 1024) {
-        sidebar.classList.remove('sidebar-open');
-        sidebarOverlay.classList.remove('active');
-    }
-});
 
 // Handle session completion notifications
 function checkForCompletedSessions(newSessions, oldSessions) {
+    if (!newSessions || !oldSessions) return;
+    
     const completedSessions = newSessions.filter(newSession => {
         const oldSession = oldSessions.find(s => s.id === newSession.id);
         return newSession.status === 'completed' && 
@@ -342,6 +329,8 @@ function checkForCompletedSessions(newSessions, oldSessions) {
 
 // Handle failed session notifications
 function checkForFailedSessions(newSessions, oldSessions) {
+    if (!newSessions || !oldSessions) return;
+    
     const failedSessions = newSessions.filter(newSession => {
         const oldSession = oldSessions.find(s => s.id === newSession.id);
         return (newSession.status === 'failed' || newSession.status === 'terminated') && 
@@ -361,3 +350,23 @@ function checkForFailedSessions(newSessions, oldSessions) {
         });
     });
 }
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    loadInitialData();
+    initWebSocket();
+    
+    // Show home section by default
+    const homeLink = document.querySelector('.nav-link[data-section="home"]');
+    if (homeLink) {
+        homeLink.click();
+    }
+});
+
+// Handle window resize for sidebar
+window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024) {
+        sidebar.classList.remove('sidebar-open');
+        sidebarOverlay.classList.remove('active');
+    }
+});

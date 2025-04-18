@@ -70,7 +70,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Enhanced cookie handling
 function convertJsonToCookieString(cookieJson) {
-  if (!Array.isArray(cookieJson) {
+  if (!Array.isArray(cookieJson)) {
     throw new Error('Cookie JSON must be an array');
   }
   

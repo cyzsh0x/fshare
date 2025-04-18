@@ -16,8 +16,7 @@
     "express": "^5.1.0",
     "fs-extra": "^11.3.0",
     "ws": "^8.18.1",
-    "firebase-admin": "^13.2.0",
-    "bottleneck": "^2.19.5"
+    "firebase-admin": "^13.2.0"
   },
   "engines": {
     "node": ">=18.0.0"

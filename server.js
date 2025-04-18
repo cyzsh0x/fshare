@@ -5,8 +5,8 @@ const cors = require('cors');
 const axios = require('axios');
 const WebSocket = require('ws');
 const admin = require('firebase-admin');
-const cluster = require('cluster');
-const os = require('os');
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+const Bottleneck = require('bottleneck');
 
 // Initialize Firebase
 const serviceAccount = require('./fshareKey.json');
@@ -17,40 +17,35 @@ admin.initializeApp({
 const db = admin.database();
 const sessionsRef = db.ref('sessions');
 const counterRef = db.ref('sessionCounter');
+const queueRef = db.ref('queue');
 
 const PORT = process.env.PORT || 11001;
+const app = express();
 const BACKUP_INTERVAL = 1000 * 60 * 1; // 1 minute
 const REQUIRED_HEADER = process.env.RH; // Custom header for API protection
 const HEADER_VALUE = process.env.HV; // Expected value for the header
 const MAX_CONSECUTIVE_FAILURES = 10; // Maximum allowed consecutive failures
-const MAX_CONCURRENT_SESSIONS = 50; // Maximum concurrent sessions per worker
-const WORKER_COUNT = process.env.WORKERS || os.cpus().length; // Use all available cores
+const MAX_PARALLEL_SESSIONS = 5; // Maximum parallel sessions per worker
+const WORKER_COUNT = process.env.WORKER_COUNT || 4; // Number of worker threads
 
-if (cluster.isMaster) {
-  console.log(`Master ${process.pid} is running`);
-
-  // Fork workers
-  for (let i = 0; i < WORKER_COUNT; i++) {
-    cluster.fork();
-  }
-
-  cluster.on('exit', (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died`);
-    cluster.fork(); // Replace the dead worker
-  });
-
-  return;
-}
-
-// Worker code
-const app = express();
 const server = app.listen(PORT, () => {
-  console.log(`Worker ${process.pid} running on port ${PORT}`);
+  console.log(`Server running on port ${PORT} with ${WORKER_COUNT} workers`);
 });
 
 const wss = new WebSocket.Server({ server });
 const clients = new Set();
-const activeSessions = new Map(); // Track active sessions in memory for performance
+
+// Rate limiter for API calls
+const apiLimiter = new Bottleneck({
+  maxConcurrent: 50,
+  minTime: 100 // 10 requests per second max
+});
+
+// Rate limiter for Facebook operations
+const fbOperationLimiter = new Bottleneck({
+  maxConcurrent: 5,
+  minTime: 200 // 5 operations per second max
+});
 
 wss.on('connection', (ws) => {
   clients.add(ws);
@@ -68,7 +63,22 @@ app.use(express.json());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Enhanced cookie handling
+// Worker thread function
+if (!isMainThread) {
+  const { sessionId } = workerData;
+  processSession(sessionId);
+}
+
+function checkHeader(req, res, next) {
+  if (req.headers[REQUIRED_HEADER.toLowerCase()] !== HEADER_VALUE) {
+    return res.status(403).json({ 
+      error: 'Forbidden',
+      message: 'You can\'t use the API. This is to avoid the abuse of the API.'
+    });
+  }
+  next();
+}
+
 function convertJsonToCookieString(cookieJson) {
   if (!Array.isArray(cookieJson)) {
     throw new Error('Cookie JSON must be an array');
@@ -80,7 +90,7 @@ function convertJsonToCookieString(cookieJson) {
     .join('; ');
 }
 
-// Session management
+// Helper functions
 function generateSessionId() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -136,7 +146,7 @@ async function broadcastActiveSessions() {
   const sessions = await readSessions();
   const now = Date.now();
   
-  const activeSessionsList = Object.entries(sessions)
+  const activeSessions = Object.entries(sessions)
     .filter(([_, session]) => ['started', 'in_progress'].includes(session.status))
     .sort((a, b) => a[1].sessionNumber - b[1].sessionNumber)
     .map(([id, session]) => {
@@ -151,7 +161,6 @@ async function broadcastActiveSessions() {
         url: session.url,
         amount: session.totalShares,
         interval: session.interval,
-        status: session.status,
         completed: session.completedShares || 0,
         failed: session.failedShares || 0,
         successRate: session.completedShares > 0 ? 
@@ -170,7 +179,7 @@ async function broadcastActiveSessions() {
   const message = {
     type: 'sessions_update',
     data: {
-      activeSessions: activeSessionsList,
+      activeSessions,
       stats: {
         totalShares,
         successRate
@@ -212,12 +221,7 @@ async function saveProgress(sessionId, progress) {
   await broadcastActiveSessions();
 }
 
-// Facebook API functions with connection pooling
-const axiosInstance = axios.create({
-  httpsAgent: new require('https').Agent({ keepAlive: true }),
-  timeout: 10000
-});
-
+// Facebook API functions
 async function validateCookie(cookie) {
   try {
     let cookieString;
@@ -253,7 +257,7 @@ async function validateCookie(cookie) {
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
     };
 
-    const response = await axiosInstance.get("https://business.facebook.com/content_management", { headers });
+    const response = await axios.get("https://business.facebook.com/content_management", { headers });
     return response.status === 200;
   } catch (error) {
     console.error("Cookie validation failed:", error.message);
@@ -296,7 +300,7 @@ async function getFacebookToken(cookie) {
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
     };
 
-    const response = await axiosInstance.get("https://business.facebook.com/content_management", { headers });
+    const response = await axios.get("https://business.facebook.com/content_management", { headers });
     const token = response.data.split("EAAG")[1].split('","')[0];
     return `${cookieString}|EAAG${token}`;
   } catch (error) {
@@ -307,7 +311,7 @@ async function getFacebookToken(cookie) {
 
 async function getPostId(postLink) {
   try {
-    const response = await axiosInstance.post(
+    const response = await axios.post(
       "https://id.traodoisub.com/api.php",
       new URLSearchParams({ link: postLink }),
       {
@@ -337,7 +341,7 @@ async function performShare(cookie, token, postId) {
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
     };
 
-    const response = await axiosInstance.post(shareUrl, null, { headers });
+    const response = await axios.post(shareUrl, null, { headers });
     return response.data && response.data.id;
   } catch (error) {
     console.error("Share failed:", error.message);
@@ -345,24 +349,18 @@ async function performShare(cookie, token, postId) {
   }
 }
 
-// Optimized sharing with batch processing
-async function shareInBackground(sessionId, cookie, url, amount, interval) {
+async function processSession(sessionId) {
   try {
-    // Check if we've reached maximum concurrent sessions
-    if (activeSessions.size >= MAX_CONCURRENT_SESSIONS) {
-      await saveProgress(sessionId, { 
-        status: 'queued',
-        totalShares: amount,
-        completedShares: 0,
-        url: url,
-        interval: interval,
-        createdAt: new Date().toISOString()
-      });
+    const sessions = await readSessions();
+    const session = sessions[sessionId];
+    
+    if (!session) {
+      console.error(`Session ${sessionId} not found`);
       return;
     }
 
-    activeSessions.set(sessionId, true);
-
+    const { cookie, url, amount, interval } = session;
+    
     const isAlive = await validateCookie(cookie);
     if (!isAlive) {
       await saveProgress(sessionId, { 
@@ -370,7 +368,6 @@ async function shareInBackground(sessionId, cookie, url, amount, interval) {
         error: 'Invalid cookie',
         failedShares: amount
       });
-      activeSessions.delete(sessionId);
       return;
     }
 
@@ -381,7 +378,6 @@ async function shareInBackground(sessionId, cookie, url, amount, interval) {
         error: 'Token retrieval failed',
         failedShares: amount
       });
-      activeSessions.delete(sessionId);
       return;
     }
     const [retrievedCookie, token] = facebookToken.split("|");
@@ -393,7 +389,6 @@ async function shareInBackground(sessionId, cookie, url, amount, interval) {
         error: 'Invalid post ID',
         failedShares: amount
       });
-      activeSessions.delete(sessionId);
       return;
     }
 
@@ -401,59 +396,54 @@ async function shareInBackground(sessionId, cookie, url, amount, interval) {
     let failedCount = 0;
     let consecutiveFailures = 0;
     const maxRetries = 3;
-    const batchSize = interval < 1 ? Math.min(10, amount) : 1; // Batch shares for very fast intervals
 
     await saveProgress(sessionId, { status: 'in_progress' });
 
-    for (let i = 0; i < amount; i += batchSize) {
-      const currentBatchSize = Math.min(batchSize, amount - i);
-      const batchPromises = [];
+    const startTime = Date.now();
+    let lastExecutionTime = startTime;
 
-      for (let j = 0; j < currentBatchSize; j++) {
-        batchPromises.push(
-          (async () => {
-            let success = false;
-            for (let retry = 0; retry < maxRetries; retry++) {
-              success = await performShare(retrievedCookie, token, postId);
-              if (success) break;
-            }
-
-            if (success) {
-              successCount++;
-              consecutiveFailures = 0;
-            } else {
-              failedCount++;
-              consecutiveFailures++;
-              
-              if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-                console.log(`Session ${sessionId} reached ${MAX_CONSECUTIVE_FAILURES} consecutive failures - terminating`);
-                await saveProgress(sessionId, {
-                  status: 'terminated',
-                  error: `Terminated due to ${MAX_CONSECUTIVE_FAILURES} consecutive failures`,
-                  completedShares: successCount,
-                  failedShares: failedCount
-                });
-                activeSessions.delete(sessionId);
-                return false; // Stop the batch
-              }
-            }
-            return true; // Continue processing
-          })()
-        );
+    for (let i = 0; i < amount; i++) {
+      const now = Date.now();
+      const elapsed = now - lastExecutionTime;
+      const waitTime = Math.max(0, (interval * 1000) - elapsed);
+      
+      if (waitTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+      
+      lastExecutionTime = Date.now();
+      
+      let success = false;
+      for (let retry = 0; retry < maxRetries; retry++) {
+        success = await fbOperationLimiter.schedule(() => performShare(retrievedCookie, token, postId));
+        if (success) break;
       }
 
-      const batchResults = await Promise.all(batchPromises);
-      if (batchResults.some(result => result === false)) {
-        break; // Stop if any batch item signaled to stop
+      if (success) {
+        successCount++;
+        consecutiveFailures = 0;
+      } else {
+        failedCount++;
+        consecutiveFailures++;
+        
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.log(`Session ${sessionId} reached ${MAX_CONSECUTIVE_FAILURES} consecutive failures - terminating`);
+          await saveProgress(sessionId, {
+            status: 'terminated',
+            error: `Terminated due to ${MAX_CONSECUTIVE_FAILURES} consecutive failures`,
+            completedShares: successCount,
+            failedShares: failedCount
+          });
+          return;
+        }
       }
 
-      await saveProgress(sessionId, {
-        completedShares: successCount,
-        failedShares: failedCount
-      });
-
-      if (interval > 0 && i + batchSize < amount) {
-        await new Promise(resolve => setTimeout(resolve, interval * 1000));
+      // Update progress every 5 shares or at the end
+      if (i % 5 === 0 || i === amount - 1) {
+        await saveProgress(sessionId, {
+          completedShares: successCount,
+          failedShares: failedCount
+        });
       }
     }
 
@@ -462,42 +452,13 @@ async function shareInBackground(sessionId, cookie, url, amount, interval) {
       completedShares: successCount,
       failedShares: failedCount
     });
-    activeSessions.delete(sessionId);
-
-    // Check for queued sessions
-    const sessions = await readSessions();
-    const queuedSessions = Object.entries(sessions)
-      .filter(([_, session]) => session.status === 'queued')
-      .sort((a, b) => new Date(a[1].createdAt) - new Date(b[1].createdAt));
-
-    if (queuedSessions.length > 0 && activeSessions.size < MAX_CONCURRENT_SESSIONS) {
-      const [queuedId, queuedSession] = queuedSessions[0];
-      shareInBackground(
-        queuedId,
-        queuedSession.cookie,
-        queuedSession.url,
-        queuedSession.totalShares,
-        queuedSession.interval
-      ).catch(console.error);
-    }
   } catch (error) {
     await saveProgress(sessionId, {
       status: 'failed',
       error: error.message,
       failedShares: amount
     });
-    activeSessions.delete(sessionId);
   }
-}
-
-function checkHeader(req, res, next) {
-  if (req.headers[REQUIRED_HEADER.toLowerCase()] !== HEADER_VALUE) {
-    return res.status(403).json({ 
-      error: 'Forbidden',
-      message: 'You can\'t use the API. This is to avoid the abuse of the API.'
-    });
-  }
-  next();
 }
 
 function apiResponse(res, status, message, data = null) {
@@ -512,6 +473,49 @@ function apiResponse(res, status, message, data = null) {
   return res.status(status).json(response);
 }
 
+// Queue processing
+async function processQueue() {
+  try {
+    const queueSnapshot = await queueRef.once('value');
+    const queue = queueSnapshot.val() || {};
+    
+    const activeSessions = await readSessions();
+    const activeCount = Object.values(activeSessions)
+      .filter(s => ['started', 'in_progress'].includes(s.status))
+      .length;
+    
+    if (activeCount >= MAX_PARALLEL_SESSIONS * WORKER_COUNT) {
+      return;
+    }
+    
+    const nextSessionId = Object.keys(queue)[0];
+    if (!nextSessionId) return;
+    
+    // Move from queue to active sessions
+    const sessionData = queue[nextSessionId];
+    await sessionsRef.child(nextSessionId).set(sessionData);
+    await queueRef.child(nextSessionId).remove();
+    
+    // Start processing in a worker thread
+    const worker = new Worker(__filename, {
+      workerData: { sessionId: nextSessionId }
+    });
+    
+    worker.on('error', (error) => {
+      console.error(`Worker error for session ${nextSessionId}:`, error);
+    });
+    
+    worker.on('exit', (code) => {
+      if (code !== 0) {
+        console.error(`Worker stopped with exit code ${code} for session ${nextSessionId}`);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Queue processing error:', error);
+  }
+}
+
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -522,7 +526,7 @@ app.get("/api/v1/initial-data", checkHeader, async (req, res) => {
     const sessions = await readSessions();
     const now = Date.now();
     
-    const activeSessionsList = Object.entries(sessions)
+    const activeSessions = Object.entries(sessions)
       .filter(([_, session]) => ['started', 'in_progress'].includes(session.status))
       .sort((a, b) => a[1].sessionNumber - b[1].sessionNumber)
       .map(([id, session]) => {
@@ -537,7 +541,6 @@ app.get("/api/v1/initial-data", checkHeader, async (req, res) => {
           url: session.url,
           amount: session.totalShares,
           interval: session.interval,
-          status: session.status,
           completed: session.completedShares || 0,
           failed: session.failedShares || 0,
           successRate: session.completedShares > 0 ? 
@@ -555,7 +558,7 @@ app.get("/api/v1/initial-data", checkHeader, async (req, res) => {
 
     res.json({
       data: {
-        activeSessions: activeSessionsList,
+        activeSessions,
         stats: {
           totalShares,
           successRate
@@ -613,31 +616,26 @@ app.post("/api/v1/submit", checkHeader, async (req, res) => {
       return apiResponse(res, 400, "Interval must be between 0.1 and 60 seconds");
     }
 
+    if (interval < 1 && amount > 100) {
+      return apiResponse(res, 400, "For intervals below 1 second, maximum shares is 100");
+    }
+
     const sessionId = generateSessionId();
     const sessionNumber = await getNextSessionNumber();
 
-    await saveProgress(sessionId, {
-      status: 'started',
+    // Add to queue instead of starting immediately
+    await queueRef.child(sessionId).set({
+      status: 'queued',
       totalShares: Math.floor(amount),
       completedShares: 0,
       url: url.trim(),
       interval: parseFloat(interval.toFixed(1)),
       createdAt: new Date().toISOString(),
       sessionNumber,
-      cookie: cookieString // Store cookie for queued sessions
+      cookie: cookieString
     });
 
-    shareInBackground(sessionId, cookieString, url, Math.floor(amount), parseFloat(interval.toFixed(1)))
-      .catch(err => {
-        console.error(`Background sharing error for session ${sessionId}:`, err);
-        saveProgress(sessionId, {
-          status: 'failed',
-          error: err.message,
-          failedShares: amount
-        });
-      });
-
-    return apiResponse(res, 200, "Sharing process started successfully", {
+    return apiResponse(res, 200, "Sharing process queued successfully", {
       sessionId: sessionId,
       sessionNumber: sessionNumber
     });
@@ -652,7 +650,7 @@ app.post("/api/v1/submit", checkHeader, async (req, res) => {
 
 // Initialize server
 (async () => {
-  console.log(`Worker ${process.pid} initializing Firebase session store`);
+  console.log('Initializing Firebase session store');
   
   const sessions = await readSessions();
   let needsUpdate = false;
@@ -669,13 +667,22 @@ app.post("/api/v1/submit", checkHeader, async (req, res) => {
     await writeSessions(sessions);
   }
 
-  const activeSessionsList = Object.values(sessions).filter(s => ['started', 'in_progress'].includes(s.status));
-  if (activeSessionsList.length === 0) {
+  // Check if we need to reset session counter when no active sessions exist
+  const activeSessions = Object.values(sessions).filter(s => ['started', 'in_progress'].includes(s.status));
+  if (activeSessions.length === 0) {
     const counterSnapshot = await counterRef.once('value');
     if (counterSnapshot.val() !== 0) {
       await counterRef.set(0);
       console.log('Reset session counter to 0 as no active sessions exist');
     }
+  }
+
+  // Start queue processing interval
+  setInterval(processQueue, 5000);
+  
+  // Start workers
+  for (let i = 0; i < WORKER_COUNT; i++) {
+    console.log(`Starting worker ${i + 1}`);
   }
 })();
 
@@ -686,7 +693,7 @@ process.on('uncaughtException', async (error) => {
 });
 
 process.on('SIGINT', async () => {
-  console.log('Worker shutting down...');
+  console.log('Server shutting down...');
   process.exit();
 });
 

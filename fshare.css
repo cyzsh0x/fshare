@@ -1,0 +1,253 @@
+/* Neon background elements */
+.neon-circle {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.15;
+    z-index: -1;
+    animation: float 3s ease-in-out infinite;
+}
+
+.neon-circle.blue {
+    background: #3b82f6;
+    width: 300px;
+    height: 300px;
+    top: 20%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.neon-circle.purple {
+    background: #8b5cf6;
+    width: 400px;
+    height: 400px;
+    bottom: 10%;
+    right: 10%;
+    animation-delay: 2s;
+}
+
+.neon-circle.pink {
+    background: #ec4899;
+    width: 250px;
+    height: 250px;
+    top: 60%;
+    left: 30%;
+    animation-delay: 4s;
+}
+
+.neon-circle.cyan {
+    background: #06b6d4;
+    width: 350px;
+    height: 350px;
+    top: 30%;
+    right: 20%;
+    animation-delay: 6s;
+}
+
+/* Glass effect */
+.glass-effect {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 3px;
+}
+
+/* Form inputs */
+.form-input {
+    transition: all 0.3s ease;
+}
+
+.form-input:focus {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Gradient text */
+.gradient-text {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+/* Status indicators */
+.status-indicator {
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.status-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    animation: neon-pulse 2s infinite;
+}
+
+.status-indicator.active::before {
+    background-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+}
+
+.status-indicator.inactive::before {
+    background-color: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+}
+
+/* Tooltip */
+.tooltip {
+    position: relative;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    text-align: center;
+    border-radius: 6px;
+    padding: 0.5rem;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Progress bar */
+.progress-bar {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: rgba(30, 41, 59, 0.5);
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 0.25rem;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    transition: width 0.3s ease;
+}
+
+.fade-out {
+    animation: fadeOut 0.5s ease forwards;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.hidden {
+    display: none;
+}
+
+/* Navigation */
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: #94a3b8;
+    transition: all 0.3s ease;
+    gap: 0.75rem;
+}
+
+.nav-link:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: #e2e8f0;
+}
+
+.nav-link.active {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+}
+
+.nav-link i {
+    transition: all 0.3s ease;
+}
+
+.nav-link.active i {
+    color: #3b82f6;
+}
+
+/* Sidebar toggle animation */
+.sidebar-open {
+    transform: translateX(0) !important;
+}
+
+/* Button animations */
+#submitBtn:not(:disabled) {
+    animation: pulse-slow 2s infinite;
+}
+
+#submitBtn:not(:disabled):hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+#submitBtn:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+/* Section transitions */
+.section-content {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.section-content.hidden {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.section-content:not(.hidden) {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Mobile sidebar overlay */
+#sidebarOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+#sidebarOverlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}

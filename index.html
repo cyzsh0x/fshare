@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.9">
+    <title>Facebook Share Booster</title>
+    
+    <link rel="icon" href="./img/fshare-icon.png" type="image/png">
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./js/twconfig.js"></script>
+    <link rel="stylesheet" href="./css/fshare.css">
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-dark-bg text-dark-text min-h-screen flex font-sans antialiased">
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="glass-effect w-64 fixed h-full border-r border-dark-border/50 z-40 transition-all duration-300 -translate-x-full lg:translate-x-0">
+        <div class="p-4 h-full flex flex-col">
+            <div class="flex items-center space-x-3 mb-8">
+                <h1 class="text-xl font-bold gradient-text" style="background-image: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)">
+                    FShare Booster
+                </h1>
+                <span class="text-xs bg-dark-card px-2 py-1 rounded-full text-neon-cyan border border-neon-cyan/30">
+                    v1.0.1
+                </span>
+            </div>
+            
+            <nav class="flex-1 space-y-1">
+                <a href="#" class="nav-link active" data-section="home">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <span>Home</span>
+                </a>
+                <a href="#" class="nav-link" data-section="sessions">
+                    <i data-lucide="activity" class="w-5 h-5"></i>
+                    <span>Active Sessions</span>
+                </a>
+                <a href="#" class="nav-link" data-section="stats">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    <span>Performance Stats</span>
+                </a>
+                <a href="#" class="nav-link" data-section="guide">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span>Guide</span>
+                </a>
+            </nav>
+            
+            <div class="mt-auto pt-4 border-t border-dark-border/30">
+                <div class="flex items-center space-x-2 text-sm text-dark-secondary">
+                    <i data-lucide="code" class="w-4 h-4 text-neon-blue"></i>
+                    <span><a class="text-neon-blue" href="https://github.com/cyzsh0x/fshareboost/">View source code</a></span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Sidebar Toggle -->
+    <!--
+    <button id="sidebarToggle" class="fixed lg:hidden bottom-4 right-4 z-50 bg-neon-blue/90 text-white p-3 rounded-full shadow-lg transition-all hover:bg-neon-blue">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+    -->
+
+    <!-- Main Content -->
+    <div class="flex-1 lg:ml-64 transition-all duration-300">
+        <!-- Header -->
+        <header class="glass-effect sticky top-0 z-30 border-b border-dark-border/50">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="h-16 flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <button id="mobileSidebarToggle" class="lg:hidden text-dark-secondary hover:text-neon-blue">
+                            <i data-lucide="menu" class="w-6 h-6"></i>
+                        </button>
+                        <h2 id="pageTitle" class="text-xl font-semibold">Home</h2>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="hidden md:flex items-center space-x-2 text-dark-secondary text-sm">
+                            <i data-lucide="zap" class="w-4 h-4 text-neon-purple"></i>
+                            <span>High Performance</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 sm:px-6 lg:px-8 max-w-6xl">
+            <!-- Home Section -->
+            <section id="home-section" class="section-content">
+                <div class="bg-dark-card rounded-xl shadow-lg border border-dark-border/50 p-6 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-semibold flex items-center gap-2">
+                            <i data-lucide="settings" class="w-5 h-5 text-neon-blue"></i>
+                            Configuration
+                        </h2>
+                        <div class="bg-dark-bg rounded-full px-3 py-1.5 text-xs text-neon-blue flex items-center gap-1.5 border border-neon-blue/30">
+                            <i data-lucide="lock" class="w-3 h-3"></i>
+                            Encrypted
+                        </div>
+                    </div>
+
+                    <form id="shareForm" class="space-y-6">
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-dark-secondary flex items-center gap-1.5">
+                                FB Cookie JSON
+                            </label>
+                            <div class="relative">
+                                <textarea 
+                                    id="cookie" 
+                                    name="cookie"
+                                    rows="4" 
+                                    class="form-input w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-0 focus:border-neon-blue transition-all resize-none outline-none text-dark-text placeholder-dark-secondary"
+                                    placeholder="Paste your cookie JSON here..."
+                                    spellcheck="false"
+                                    required
+                                ></textarea>
+                                <div class="absolute bottom-3 right-3 text-dark-secondary">
+                                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <div class="text-xs text-red-400 hidden" id="cookieError">Cookie is required</div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-dark-secondary">
+                                Public Post URL
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="link" 
+                                    id="url" 
+                                    name="url"
+                                    class="form-input w-full h-11 px-4 pl-11 bg-dark-bg border border-dark-border rounded-lg focus:ring-0 focus:border-neon-blue transition-all outline-none text-dark-text placeholder-dark-secondary"
+                                    placeholder="https://facebook.com/..."
+                                    required
+                                >
+                                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-dark-secondary">
+                                    <i data-lucide="link-2" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <div class="text-xs text-red-400 hidden" id="urlError">Valid URL is required</div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-3">
+                                <label class="block text-sm font-medium text-dark-secondary">
+                                    Share Amount
+                                </label>
+                                <div class="relative">
+                                    <input 
+                                        type="number" 
+                                        id="amount" 
+                                        name="amount"
+                                        class="form-input w-full h-11 px-4 pl-11 bg-dark-bg border border-dark-border rounded-lg focus:ring-0 focus:border-neon-blue transition-all outline-none text-dark-text placeholder-dark-secondary"
+                                        placeholder="100"
+                                        required
+                                        min="1"
+                                    >
+                                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-dark-secondary">
+                                        <i data-lucide="repeat" class="w-5 h-5"></i>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-red-400 hidden" id="amountError">Valid amount is required</div>
+                            </div>
+                            <div class="space-y-3">
+                                <label class="block text-sm font-medium text-dark-secondary">
+                                    Interval (s)
+                                </label>
+                                <div class="relative">
+                                    <input 
+                                        type="number" 
+                                        step="0.1"
+                                        id="interval" 
+                                        name="interval"
+                                        class="form-input w-full h-11 px-4 pl-11 bg-dark-bg border border-dark-border rounded-lg focus:ring-0 focus:border-neon-blue transition-all outline-none text-dark-text placeholder-dark-secondary"
+                                        placeholder="3"
+                                        required
+                                        min="0.1"
+                                    >
+                                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-dark-secondary">
+                                        <i data-lucide="clock" class="w-5 h-5"></i>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-red-400 hidden" id="intervalError">Valid interval is required</div>
+                            </div>
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            id="submitBtn"
+                            class="w-full h-12 px-4 rounded-lg transition-all flex items-center justify-center gap-2 focus:ring-2 focus:ring-neon-blue/50 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)"
+                            disabled
+                        >
+                            <span id="btnText">Fill all fields</span>
+                            <i data-lucide="rocket" class="w-5 h-5"></i>
+                        </button>
+                    </form>
+
+                    <div id="result" class="text-center"></div>
+                </div>
+            </section>
+
+            <!-- Sessions Section -->
+            <section id="sessions-section" class="section-content hidden">
+                <div class="bg-dark-card rounded-xl shadow-lg border border-dark-border/50 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold flex items-center gap-2">
+                            <i data-lucide="activity" class="w-5 h-5 text-neon-purple"></i>
+                            Active Sessions
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                            <span class="text-xs text-green-400">Live</span>
+                        </div>
+                    </div>
+                    
+                    <div id="sessions" class="space-y-4 max-h-[calc(100vh-18rem)] overflow-y-auto custom-scrollbar pr-2">
+                        <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30 text-center text-dark-secondary">
+                            <i data-lucide="server-off" class="w-6 h-6 mx-auto mb-2 text-dark-secondary"></i>
+                            <p>No active sessions found</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Section -->
+            <section id="stats-section" class="section-content hidden">
+                <div class="bg-dark-card rounded-xl shadow-lg border border-dark-border/50 p-6 space-y-6">
+                    <h2 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5 text-neon-cyan"></i>
+                        Performance Stats
+                    </h2>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-dark-secondary">Total Shares</p>
+                                    <p class="text-2xl font-bold" id="totalShares">0</p>
+                                </div>
+                                <div class="p-2 rounded-lg bg-neon-blue/10 text-neon-blue">
+                                    <i data-lucide="share-2" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-dark-secondary">Success Rate</p>
+                                    <p class="text-2xl font-bold" id="successRate">0%</p>
+                                </div>
+                                <div class="p-2 rounded-lg bg-neon-purple/10 text-neon-purple">
+                                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Guide Section -->
+            <section id="guide-section" class="section-content hidden">
+                <div class="bg-dark-card rounded-xl shadow-lg border border-dark-border/50 p-6 space-y-6">
+                    <h2 class="text-xl font-semibold flex items-center gap-2">
+                        <i data-lucide="book-open" class="w-5 h-5 text-neon-pink"></i>
+                        User Guide
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30">
+                            <h3 class="font-medium text-neon-blue flex items-center gap-2">
+                                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                                Getting Started
+                            </h3>
+                            <p class="mt-2 text-sm text-dark-secondary">
+                                To begin boosting your Facebook post shares, follow these simple steps:
+                            </p>
+                            <ol class="list-decimal list-inside mt-2 space-y-2 text-sm text-dark-secondary">
+                                <li>Obtain your Facebook cookie string</li>
+                                <li>Enter the URL of the post you want to boost</li>
+                                <li>Set the desired amount of shares</li>
+                                <li>Configure the interval between shares</li>
+                                <li>Click "Start Boosting"</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="space-y-4">
+                        <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30">
+                            <h3 class="font-medium text-neon-blue flex items-center gap-2">
+                                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                                Getting Cookie
+                            </h3>
+                            <p class="mt-2 text-sm text-dark-secondary">
+                                To get your cookie follow these steps:
+                            </p>
+                            <ol class="list-decimal list-inside mt-2 space-y-2 text-sm text-dark-secondary">
+                                <li>Download <a class="text-neon-blue" href="https://mrepol742-released-stable.netlify.app/Webvium-release.apk">Webvium Browser</a></li>
+                                <li>Login to your Facebook account (dummy)</li>
+                                <li>Click the 3 dots on upper right corner > DevTools > Cookie Manager</li>
+                                <li>Long press > Select all > Copy</li>
+                                <li>Proceed to start a session in Fshare</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="bg-dark-bg/50 rounded-lg p-4 border border-dark-border/30">
+                            <h3 class="font-medium text-neon-purple flex items-center gap-2">
+                                <i data-lucide="shield-check" class="w-5 h-5"></i>
+                                Safety Tips & Reminder
+                            </h3>
+                            <ul class="list-disc list-inside mt-2 space-y-2 text-sm text-dark-secondary">
+                               
+<li>Use at your own risk</li>
+<li>Never share your cookies with anyone</li>
+                                <li>Use a separate account for boosting</li>
+                                <li>Start with small amounts to test</li>
+                                <li>Use reasonable intervals to avoid detection</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!--
+
+        <footer class="glass-effect py-4 text-center text-dark-secondary text-sm border-t border-dark-border/50 mt-10">
+            <p class="font-medium">&copy; <span id="year"></span> FShare Booster. All rights reserved.</p>
+            <p class="text-xs mt-1 opacity-75">Project by <span class="text-neon-blue">Koudex</span></p>
+        </footer>
+        -->
+    </div>
+
+    <!-- Neon background elements -->
+    <div class="neon-circle blue"></div>
+    <div class="neon-circle purple"></div>
+    <div class="neon-circle pink"></div>
+    <div class="neon-circle cyan"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/fshare.js"></script>
+</body>
+</html>

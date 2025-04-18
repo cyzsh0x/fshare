@@ -111,7 +111,7 @@ form.addEventListener('submit', async (e) => {
         await Swal.fire({
             icon: 'success',
             title: 'Session Started',
-            text: `Your sharing session has been started successfully (ID: ${result.id})`,
+            text: `Your sharing session has been started successfully`,
             background: '#1e293b',
             color: '#e2e8f0',
             confirmButtonColor: '#3b82f6',

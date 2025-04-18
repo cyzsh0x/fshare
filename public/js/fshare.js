@@ -31,7 +31,7 @@ const sections = {
     'stats': document.getElementById('stats-section'),
     'guide': document.getElementById('guide-section')
 };
-const pageTitle = document.getElementById('pageTitle');
+// const pageTitle = document.getElementById('pageTitle');
 
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
@@ -43,7 +43,7 @@ navLinks.forEach(link => {
         link.classList.add('active');
         
         // Update page title
-        pageTitle.textContent = link.querySelector('span').textContent;
+        // pageTitle.textContent = link.querySelector('span').textContent;
         
         // Show selected section
         Object.values(sections).forEach(sec => sec.classList.add('hidden'));

@@ -345,7 +345,7 @@ function checkForFailedSessions(newSessions, oldSessions) {
     const failedSessions = newSessions.filter(newSession => {
         const oldSession = oldSessions.find(s => s.id === newSession.id);
         return (newSession.status === 'failed' || newSession.status === 'terminated') && 
-               (!oldSession || oldSession.status === 'active');
+               (!oldSession || oldSession.status === 'in_progress');
     });
 
     failedSessions.forEach(session => {

@@ -1,0 +1,33 @@
+{
+  "name": "fsharebooster",
+  "version": "1.0.1",
+  "description": "Facebook Share Boosting Tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "npm install && npm run tailwind:build",
+    "tailwind:build": "tailwindcss -i ./public/css/fshare.css -o ./public/css/output.css --minify",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Koudex",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "fs-extra": "^11.3.0",
+    "ws": "^8.18.1",
+    "firebase-admin": "^13.2.0",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8.4.35",
+    "autoprefixer": "^10.4.18"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

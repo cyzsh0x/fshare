@@ -1,6 +1,8 @@
 // Initialize Lucide icons
 lucide.createIcons();
 
+axios.defaults.headers.common['X-Daemon'] = 'DaemonCyzsh';
+
 // Set current year in footer
 // document.getElementById('year').textContent = new Date().getFullYear();
 

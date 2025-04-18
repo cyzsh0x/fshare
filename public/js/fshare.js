@@ -152,6 +152,7 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 3000;
 const POLL_INTERVAL = 5000;
+let previousSessions = [];
 
 function loadInitialData() {
     const savedData = localStorage.getItem('fshare_sessions');
@@ -178,18 +179,27 @@ function initWebSocket() {
     };
     
     ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'sessions_update') {
-            activeSessions = message.data.activeSessions;
-            stats = message.data.stats;
-            localStorage.setItem('fshare_sessions', JSON.stringify({
-                activeSessions,
-                stats
-            }));
-            updateSessionsUI();
-            updateStatsUI();
-        }
-    };
+    const message = JSON.parse(event.data);
+    if (message.type === 'sessions_update') {
+        checkForCompletedSessions(message.data.activeSessions, previousSessions);
+        checkForFailedSessions(message.data.activeSessions, previousSessions);
+        
+        // Update sessions data
+        activeSessions = message.data.activeSessions;
+        stats = message.data.stats;
+        localStorage.setItem('fshare_sessions', JSON.stringify({
+            activeSessions,
+            stats
+        }));
+        
+        // Update UI
+        updateSessionsUI();
+        updateStatsUI();
+        
+        // Store current sessions for next comparison
+        previousSessions = [...activeSessions];
+    }
+};
     
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
@@ -351,31 +361,3 @@ function checkForFailedSessions(newSessions, oldSessions) {
         });
     });
 }
-
-// Store previous sessions for comparison
-let previousSessions = [];
-
-// Modify the WebSocket message handler to include notifications
-ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === 'sessions_update') {
-        // Check for completed/failed sessions before updating
-        checkForCompletedSessions(message.data.activeSessions, previousSessions);
-        checkForFailedSessions(message.data.activeSessions, previousSessions);
-        
-        // Update sessions data
-        activeSessions = message.data.activeSessions;
-        stats = message.data.stats;
-        localStorage.setItem('fshare_sessions', JSON.stringify({
-            activeSessions,
-            stats
-        }));
-        
-        // Update UI
-        updateSessionsUI();
-        updateStatsUI();
-        
-        // Store current sessions for next comparison
-        previousSessions = [...activeSessions];
-    }
-};

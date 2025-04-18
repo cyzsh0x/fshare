@@ -921,15 +921,15 @@ app.post("/api/v1/submit", checkHeader, async (req, res) => {
     }
 
     if (amount <= 0) {
-      return apiResponse(res, 400, "Share amount must be at least 1 or greater than 0");
+      return apiResponse(res, 400, "Share amount must be at least 1");
     }
 
     if (interval < 0.1 || interval > 60) {
       return apiResponse(res, 400, "Interval must be between 0.1 and 60 seconds");
     }
 
-    if (interval < 1 && amount > 100) {
-      return apiResponse(res, 400, "For intervals below 1 second, maximum shares is 100");
+    if (interval < 1 && amount > 1000) {
+      return apiResponse(res, 400, "For intervals below 1 second, maximum shares is 1000");
     }
 
     const sessionId = generateSessionId();
